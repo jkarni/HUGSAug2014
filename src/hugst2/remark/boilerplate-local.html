@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Awesome Presentation</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <style type="text/css">
+      @import url(http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(http://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(http://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+name: inverse
+layout: true
+class: center, middle, inverse
+---
+#Polycephaly
+Or, multiplying instance heads
+
+???
+
+Oleg Kiselyov's website is great!
+
+Formula for talks: spend a weekend understanding a post, come explain it.
+---
+## The Problem
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+
+```haskell
+class Print a where { print :: a -> String }
+
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+
+```
+ 
+]
+???
+Practical Use Case: serialization, i.e., order.
+General principle: reflect class-instance to value-level.
+Interesting to consider: connections to logic programming.
+As practice ground for advanced type-level stuff.
+
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+
+```haskell
+class Print a where { print :: a -> String }
+
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+
+```
+
+```terminal
+     Duplicate instance declarations:
+      instance Show a => Print a -- Defined at ex1.hs:4:10
+      instance Print a -- Defined at ex1.hs:5:20
+Failed, modules loaded: none
+```
+]
+???
+Duplicate? But they're different!
+---
+ 
+.left-column[
+  ## The Problem
+]
+.right-column[
+
+```haskell
+class Print a where { print :: a -> String }
+
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+
+```
+
+```terminal
+     Duplicate instance declarations:
+      instance Show a => Print a -- Defined at ex1.hs:4:10
+      instance Print a -- Defined at ex1.hs:5:20
+Failed, modules loaded: none
+```
+Instance heads cannot match.
+]
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+
+
+```haskell
+class Print a where { print :: a -> String }
+
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+
+```
+ 
+???
+Segue: Some terminology...
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+
+
+```haskell
+class Print a where { print :: a -> String }
+
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+```
+
+```haskell
+--   Context/constraint          Class method
+--          |                         |
+--          ↓   ↱ Context arrow       ↓  
+instance Show a => Print a where { print = show }
+instance           Print a where { print = "No show" }
+--                   ↑
+--               Instance head
+```
+ 
+???
+GHC User Guide: Context = part before =>, which has many 'assertions'.
+
+Segue: Let's look at an idealized execution model for the behavior we want.
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+
+```haskell
+class A a
+class B a
+class C a 
+instance (Show a) => A a where {...}
+instance             A a where {...}
+instance (A a)    => B a where {...}
+instance             B a where {...}
+instance (B a)    => C a where {...}
+instance             C a where {...}
+```
+ 
+???
+
+Let's say we have to prove X is a C. How would we check it? [Wait]
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+```haskell
+class A a
+class B a
+class C a 
+instance (Show a) => A a where {...}
+instance             A a where {...}
+instance (A a)    => B a where {...}
+instance             B a where {...}
+instance (B a)    => C a where {...}
+instance             C a where {...}
+```
+]
+![searchpath](img/searchpath.jpg)
+
+???
+Search tree.
+
+Looks a lot like Prolog.
+
+This might get complicated.
+
+It will certainly get slow.
+
+Like OverlappingInstances, meaning changes at a distance.
+
+Segue: There's another problem.
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+]
+
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer:
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+]
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer: *The first*
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+
+]
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer: *The first*
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+* But...
+]
+???
+ 
+In this case it doesn't matter. A (a) holds the same way.
+
+Segue: But sometimes it does.
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer: *The first*
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+* But sometimes it matters.
+]
+
+???
+
+For semantics!
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer: *The first*
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+* But sometimes it matters.
+
+```prolog
+A(X) :- P(X).
+A(X) :- Q(X).
+A(X) :- R(X).
+P(alice).
+Q(bob).
+R(carol).
+?- A(X).
+```
+
+]
+???
+
+What is the output? X = ... ?
+---
+layout: false
+.left-column[
+  ## The Problem
+]
+.right-column[
+Which one to pick?
+```haskell
+instance P a => A a where { amethod = ...}
+instance Q a => A a where { amethod = ...}
+instance R a => A a where { amethod = ...}
+```
+Prolog's answer: *The first*
+```prolog
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
+```
+* But sometimes it matters.
+
+```prolog
+A(X) :- P(X).
+A(X) :- Q(X).
+A(X) :- R(X).
+P(alice).
+Q(bob).
+R(carol).
+?- A(X).
+```
+* And then this ends up looking too procedural!
+
+]
+---
+name: inverse
+layout: true
+class: center, middle, inverse
+---
+# The Solution
+ 
+???
+It's a little simple-minded and hopeful to name the two sections of your talk
+the problem and the solution.
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+???
+
+Any thoughts on how we might proceed? [Wait]
+
+Well, what was the problem? ...  The instance head was the same
+
+Segue: so we...
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+]
+???
+ 
+Add another type paramer to the class that will do the dispatching on class.
+
+Segue: for instance...
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a where { ... }
+
+instance Show a => PrintHelper T1 a
+instance           PrintHelper T2 a
+
+instance PrintHelper flag a => Print a where { ... }
+```
+]
+
+???
+ 
+Can anyone spot what's wrong with this?
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a where { ... }
+
+instance Show a => PrintHelper T1 a
+instance           PrintHelper T2 a
+                  
+*instance PrintHelper flag a => Print a where { ... }
+```
+]
+ 
+???
+ 
+Note that OverlappingInstances is from now on. Several other extensions too.
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a where { ... }
+
+instance Show a => PrintHelper T1 a
+instance           PrintHelper T2 a
+
+*instance PrintHelper flag a => Print a where { ... }
+```
+Ambiguous type!
+]
+
+???
+ 
+This isn't GHC being annoying.
+
+(In fact, more and more I find that GHC is rarely just annoying.)
+
+We haven't given a way of choosing the type/instance.
+
+Segue: Any thoughts about how to solve *that*?
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+*class PrintHelper flag a | a -> flag where { ... }
+
+instance Show a => PrintHelper T1 a
+instance           PrintHelper T2 a
+ 
+instance PrintHelper flag a => Print a where { ... }
+```
+]
+
+???
+
+Functional dependencies. 
+
+Makes sense: the type 'a' determines whether it's an instance, which
+determines the flag.
+
+Segue: but...
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a | a -> flag where { ... }
+
+*instance Show a => PrintHelper T1 a
+*instance           PrintHelper T2 a
+
+instance PrintHelper flag a => Print a where { ... }
+```
+Functional dependency conflict!
+]
+
+???
+
+Again we're in trouble. GHC caught us lying!
+
+How do we fix this?
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a | a -> flag where { ... }
+
+instance           PrintHelper T1 Int
+instance           PrintHelper T1 String
+-- ...
+instance Show a => PrintHelper T1 [a]
+-- ...
+
+instance           PrintHelper T2 a
+
+instance PrintHelper flag a => Print a where { ... }
+```
+]
+
+???
+
+We can 'unroll' the constrained type variable.
+
+But this isn't sufficient. 
+
+Can anyone spot why?
+
+We still haven't fixed the fundep issue. It's a little bit harder to spot
+because we have OverlappingInstances.
+
+[Give a minute or so pause.]
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a | a -> flag where { ... }
+
+instance           PrintHelper T1 Int
+instance           PrintHelper T1 String
+-- ...
+instance Show a => PrintHelper T1 [a]
+-- ...
+
+instance (T2 ~ f) => PrintHelper f a
+
+instance PrintHelper flag a => Print a where { ... }
+```
+]
+
+???
+
+ 
+Brilliant! The issue we started off with is that GHC doesn't match left to
+right, but instead just matches the instance head and *then* checks that the
+constraint is satisfied. 
+
+So we use exactly that to make OverlappingInstances and FunctionalDependencies
+play nicely!
+ 
+Segue: In exchange for all that work...
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+* Add an extra parameter!
+
+```haskell
+data T1
+data T2
+
+class PrintHelper flag a | a -> flag where { ... }
+
+instance           PrintHelper T1 Int
+instance           PrintHelper T1 String
+-- ...
+instance Show a => PrintHelper T1 [a]
+-- ...
+
+instance (T2 ~ f) => PrintHelper f a
+
+instance PrintHelper flag a => Print a where { ... }
+```
+# It compiles!
+```terminal
+[1 of 1] Compiling Main             ( ex3.hs, interpreted )
+Ok, modules loaded: Main.
+```
+]
+ 
+???
+
+Success!
+
+
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+
+### Runnable Code
+```haskell
+{-# LANGUAGE FlexibleInstances, 
+             UndecidableInstances, 
+             TypeFamilies, 
+             OverlappingInstances, 
+             FunctionalDependencies #-}
+data T1
+data T2
+
+class Print a where
+        print :: a -> String
+
+class PrintHelper flag a | a -> flag where 
+        ph :: a -> String
+
+
+instance PrintHelper T1 Int where ph = show
+instance PrintHelper T1 String where ph = show
+-- ...
+instance Show a => PrintHelper T1 [a] where ph = show
+-- ...
+
+instance (T2 ~ f) => PrintHelper f a where 
+    ph = const "no show"
+instance PrintHelper flag a => Print a where 
+    print = ph
+```
+???
+
+Here's the full code listing.
+
+To prove it works... [Show ghci]
+
+[wait a few seconds for effect]
+
+There are still some things that could be improved. For instance, we have to
+repeat all this effort for each class we want multiple instances of. Can we
+abstract away a little?
+]
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### The Show Predicate
+```haskell
+data TTrue
+data TFalse
+
+class ShowPred a flag | a -> flag
+
+instance ShowPred Int TTrue
+instance ShowPred Bool TTrue
+-- ...
+instance ShowPred a flag => ShowPred Bool flag
+-- ...
+instance (TFalse ~ a) => ShowPred a flag
+
+```
+]
+
+???
+
+Well, we can do the work of 'type-reifying' for each class we branch on rather
+than for each that we have branches for. i.e., on Show, not Print.
+
+Then we have reusable components.
+
+
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### The Show Predicate
+```haskell
+data TTrue
+data TFalse
+
+class ShowPred a flag | a -> flag
+
+instance ShowPred Int TTrue
+instance ShowPred Bool TTrue
+-- ...
+instance ShowPred a flag => ShowPred Bool flag
+-- ...
+instance (TFalse ~ a) => ShowPred a flag
+
+class PrintHelper flag a where
+    ph :: flag -> a -> String
+ 
+instance Show a => PrintHelper TTrue a where
+   ph _ = show
+instance PrintHelper TFalse a where
+   ph _ = const "No show method"
+
+instance (ShowPred a flag, PrintHelper flag a) => Print a where
+    print = ph (undefined::flag)
+ 
+```
+]
+???
+ 
+And the code looks much better. The PrintHelper instances are only two, and
+look a lot like what we wanted to write initially.
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### The Show Predicate
+```haskell
+data TTrue
+data TFalse
+
+class ShowPred a flag | a -> flag
+            
+instance ShowPred Int TTrue
+instance ShowPred Bool TTrue
+-- ...
+instance ShowPred a flag => ShowPred Bool flag
+-- ...
+instance (TFalse ~ a) => ShowPred a flag
+
+class PrintHelper flag a where
+*   ph :: flag -> a -> String
+
+instance Show a => PrintHelper TTrue a where
+   ph _ = show
+instance PrintHelper TFalse a where
+   ph _ = const "No show method"
+ 
+instance (ShowPred a flag, PrintHelper flag a) => Print a where
+*   print = ph (undefined::flag)
+```
+]
+
+???
+
+We needed to add an extra parameter, though. Just to pass the type around.
+
+[Give a few seconds to see why]
+
+Because PrintHelper doesn't have the fundep.
+
+Segue: I promised *multiple* heads... 
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### Three Heads
+]
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### Three Heads
+```haskell
+data TShow, data TOrd, data TNone
+
+class WhichClass a flag | a -> flag
+
+instance WhichClass Int TOrd
+instance WhichClass Bool TShow
+-- ...
+instance (flag ~ TNone) => WhichClass a flag
+
+class PrintHelper flag a where
+    ph :: flag -> a -> String
+
+instance Show a => PrintHelper TShow a where
+   ph _ = show
+instance Ord a => PrintHelper TOrd a where
+   ph _ = const "Is Ord"
+instance PrintHelper TNone a where
+   ph _ = const "Not Show or Ord"
+class Print a where
+    print :: a -> String
+instance (WhichClass a flag, PrintHelper flag a) => Print a where
+    print = ph (undefined::flag)
+```
+]
+ 
+???
+ 
+Here are three.
+---
+layout: false
+.left-column[
+  ## The Solution
+]
+.right-column[
+### Three Heads
+```haskell
+data TShow, data TOrd, data TNone
+
+class WhichClass a flag | a -> flag
+
+*instance WhichClass Int TOrd     -- < Explict order
+instance WhichClass Bool TShow
+-- ...
+instance (flag ~ TNone) => WhichClass a flag
+
+class PrintHelper flag a where
+    ph :: flag -> a -> String
+
+instance Show a => PrintHelper TShow a where
+   ph _ = show
+instance Ord a => PrintHelper TOrd a where
+   ph _ = const "Is Ord"
+instance PrintHelper TNone a where
+   ph _ = const "Not Show or Ord"
+class Print a where
+    print :: a -> String
+instance (WhichClass a flag, PrintHelper flag a) => Print a where
+    print = ph (undefined::flag)
+```
+
+]
+
+???
+
+Note the explicit order. 
+
+This goes back a little towards non-reusable code, since we're encoding our
+order into the 'ShowPred'/'WhichClass' class. 
+
+But we could instead use a layered approach, and only combine simple and
+reusable components.
+
+---
+# Conclusion
+---
+# Conclusion
+
+--
+- We have to be careful about orphan instances (in two ways)
+ 
+--
+
+- From a theoretical perspective, the fact that 'class-reification' happened
+by hand (or TH) makes it a little less cool.
+ 
+--
+
+- But it works
+
+--
+ 
+- And we take another step towards Prolog in our type system...
+ 
+---
+
+    </textarea>
+    <script src="out/remark.js" type="text/javascript">
+    </script>
+    <script type="text/javascript">
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
