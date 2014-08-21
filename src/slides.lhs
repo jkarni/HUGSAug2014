@@ -22,6 +22,14 @@ instance           Print a where { print = "No show" }
 
 ```
 
+??? 
+
+Doesn't work.
+
+Example of usefulness: serialization
+
+General principle: reflecting class-instance info into value (or type) level
+
 ]
 ---
 layout: false
@@ -123,15 +131,12 @@ layout: false
 class A a
 class B a
 class C a 
-class D a
 instance (Show a) => A a where {...}
 instance             A a where {...}
 instance (A a)    => B a where {...}
 instance             B a where {...}
 instance (B a)    => C a where {...}
 instance             C a where {...}
-instance (C a)    => D a where {...}
-instance             D a where {...}
 ```
 ]
 ---
@@ -144,15 +149,12 @@ layout: false
 class A a
 class B a
 class C a 
-class D a
 instance (Show a) => A a where {...}
 instance             A a where {...}
 instance (A a)    => B a where {...}
 instance             B a where {...}
 instance (B a)    => C a where {...}
 instance             C a where {...}
-instance (C a)    => D a where {...}
-instance             D a where {...}
 ```
 ]
 ![searchpath](img/searchpath.jpg)
@@ -184,9 +186,9 @@ instance R a => A a where { amethod = ...}
 ```
 Prolog's answer:
 ```prolog
-A(a) :- P(a)
-A(a) :- Q(a)
-A(a) :- R(a)
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
 ```
 ]
 ---
@@ -203,9 +205,9 @@ instance R a => A a where { amethod = ...}
 ```
 Prolog's answer: *The first*
 ```prolog
-A(a) :- P(a)
-A(a) :- Q(a)
-A(a) :- R(a)
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
 ```
 
 ]
@@ -223,9 +225,9 @@ instance R a => A a where { amethod = ...}
 ```
 Prolog's answer: *The first*
 ```prolog
-A(a) :- P(a)
-A(a) :- Q(a)
-A(a) :- R(a)
+A(a) :- P(a).
+A(a) :- Q(a).
+A(a) :- R(a).
 ```
 But:
 ]
@@ -271,7 +273,7 @@ A(a) :- R(a).
 ```
 But:
 
-* Sometimes it matters!
+* Sometimes it matters.
 
 ```prolog
 A(X) :- P(X).
@@ -617,7 +619,7 @@ instance ShowPred a flag => ShowPred Bool flag
 instance (TFalse ~ a) => ShowPred a flag
 
 class PrintHelper flag a where
-    ph :: flag -> a -> IO ()
+    ph :: flag -> a -> String
  
 instance Show a => PrintHelper TTrue a where
    ph _ = show
@@ -650,7 +652,7 @@ instance ShowPred a flag => ShowPred Bool flag
 instance (TFalse ~ a) => ShowPred a flag
 
 class PrintHelper flag a where
-    ph :: flag -> a -> IO ()
+    ph :: flag -> a -> String
         -- ^^ --
 instance Show a => PrintHelper TTrue a where
    ph _ = show
