@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>My Awesome Presentation</title>
+    <title>Berlin HUGs - Polycephaly</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <style type="text/css">
       @import url(http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
@@ -186,7 +186,7 @@ instance (B a)    => C a where {...}
 instance             C a where {...}
 ```
 ]
-![searchpath](img/searchpath.jpg)
+![searchpath](searchpath.jpg)
 
 ???
 Search tree.
@@ -646,7 +646,7 @@ instance (T2 ~ f) => PrintHelper f a
 
 instance PrintHelper flag a => Print a where { ... }
 ```
-# It compiles!
+## It compiles!
 ```terminal
 [1 of 1] Compiling Main             ( ex3.hs, interpreted )
 Ok, modules loaded: Main.
@@ -672,29 +672,26 @@ layout: false
              TypeFamilies, 
              OverlappingInstances, 
              FunctionalDependencies #-}
-data T1
-data T2
+data T1, data T2
 
 class Print a where
         print :: a -> String
-
 class PrintHelper flag a | a -> flag where 
         ph :: a -> String
-
-
 instance PrintHelper T1 Int where ph = show
 instance PrintHelper T1 String where ph = show
 -- ...
 instance Show a => PrintHelper T1 [a] where ph = show
 -- ...
-
 instance (T2 ~ f) => PrintHelper f a where 
     ph = const "no show"
 instance PrintHelper flag a => Print a where 
     print = ph
 ```
+]
+ 
 ???
-
+ 
 Here's the full code listing.
 
 To prove it works... [Show ghci]
@@ -704,7 +701,6 @@ To prove it works... [Show ghci]
 There are still some things that could be improved. For instance, we have to
 repeat all this effort for each class we want multiple instances of. Can we
 abstract away a little?
-]
 ---
 layout: false
 .left-column[
@@ -744,26 +740,21 @@ layout: false
 .right-column[
 ### The Show Predicate
 ```haskell
-data TTrue
-data TFalse
+data TTrue, data TFalse
 
 class ShowPred a flag | a -> flag
-
 instance ShowPred Int TTrue
 instance ShowPred Bool TTrue
 -- ...
 instance ShowPred a flag => ShowPred Bool flag
 -- ...
 instance (TFalse ~ a) => ShowPred a flag
-
 class PrintHelper flag a where
     ph :: flag -> a -> String
- 
 instance Show a => PrintHelper TTrue a where
    ph _ = show
 instance PrintHelper TFalse a where
    ph _ = const "No show method"
-
 instance (ShowPred a flag, PrintHelper flag a) => Print a where
     print = ph (undefined::flag)
  
@@ -781,21 +772,17 @@ layout: false
 .right-column[
 ### The Show Predicate
 ```haskell
-data TTrue
-data TFalse
+data TTrue, data TFalse
 
 class ShowPred a flag | a -> flag
-            
 instance ShowPred Int TTrue
 instance ShowPred Bool TTrue
 -- ...
 instance ShowPred a flag => ShowPred Bool flag
 -- ...
 instance (TFalse ~ a) => ShowPred a flag
-
 class PrintHelper flag a where
 *   ph :: flag -> a -> String
-
 instance Show a => PrintHelper TTrue a where
    ph _ = show
 instance PrintHelper TFalse a where
@@ -834,15 +821,12 @@ layout: false
 data TShow, data TOrd, data TNone
 
 class WhichClass a flag | a -> flag
-
 instance WhichClass Int TOrd
 instance WhichClass Bool TShow
 -- ...
 instance (flag ~ TNone) => WhichClass a flag
-
 class PrintHelper flag a where
     ph :: flag -> a -> String
-
 instance Show a => PrintHelper TShow a where
    ph _ = show
 instance Ord a => PrintHelper TOrd a where
@@ -870,15 +854,12 @@ layout: false
 data TShow, data TOrd, data TNone
 
 class WhichClass a flag | a -> flag
-
 *instance WhichClass Int TOrd     -- < Explict order
 instance WhichClass Bool TShow
 -- ...
 instance (flag ~ TNone) => WhichClass a flag
-
 class PrintHelper flag a where
     ph :: flag -> a -> String
-
 instance Show a => PrintHelper TShow a where
    ph _ = show
 instance Ord a => PrintHelper TOrd a where
